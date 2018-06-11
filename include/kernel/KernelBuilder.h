@@ -126,7 +126,7 @@ namespace nalu{
                           "Tri3 exposed face is not attached to either a tet4, pyr5, or wedge6.");
         }
       case stk::topology::LINE_2:
-        if (elemTopo == stk::topology::TRI_3) {
+        if (elemTopo == stk::topology::TRI_3_2D) {
           return new T<AlgTraitsEdge2DTri32D>(std::forward<Args>(args)...);
         }
         else {
@@ -292,10 +292,12 @@ namespace nalu{
     EquationSystem& eqSys,
     stk::mesh::Part& part,
     stk::topology elemTopo,
-    std::map<std::string, SolverAlgorithm*>& solverAlgs)
+    std::map<std::string, SolverAlgorithm*>& solverAlgs,
+    const std::string bcName)
   {
     const stk::topology topo = part.topology();
-    const std::string algName = eqSys.name_ + "_AssembleFaceElemSolverAlg_" + topo.name() + "_" + elemTopo.name();
+    const std::string algName 
+      = eqSys.name_ + "_" + bcName + "_AssembleFaceElemSolverAlg_" + topo.name() + "_" + elemTopo.name();
 
     bool isNotNGP = !(elemTopo == stk::topology::HEXAHEDRON_8 ||
                       elemTopo == stk::topology::HEXAHEDRON_27 ||
@@ -332,11 +334,13 @@ namespace nalu{
   build_or_add_part_to_face_bc_solver_alg(
     EquationSystem& eqSys,
     stk::mesh::Part& part,
-    std::map<std::string, SolverAlgorithm*>& solverAlgs)
+    std::map<std::string, SolverAlgorithm*>& solverAlgs,
+    const std::string bcName)
   {
     const stk::topology topo = part.topology();
-    const std::string algName = eqSys.name_ + "_AssembleElemSolverAlg_" + topo.name();
-    
+    const std::string algName 
+      = eqSys.name_ + "_" + bcName + "_AssembleElemSolverAlg_" + topo.name();
+
     bool isNotNGP = !(topo == stk::topology::QUAD_4 ||
                       topo == stk::topology::QUAD_9 ||
                       topo == stk::topology::TRI_3 ||

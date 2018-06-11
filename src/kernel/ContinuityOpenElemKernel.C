@@ -72,9 +72,9 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
     elemDataPreReqs.add_master_element_call(SCS_SHIFTED_FACE_GRAD_OP, CURRENT_COORDINATES);
 
   if ( solnOpts.cvfemShiftMdot_ )
-    get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shape_fcn(ptr);}, vf_shape_function_);
-  else
     get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shifted_shape_fcn(ptr);}, vf_shape_function_);
+  else
+    get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shape_fcn(ptr);}, vf_shape_function_);
 }
 
 template<typename BcAlgTraits>
@@ -99,10 +99,10 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
   ScratchViews<DoubleType> &elemScratchViews,
   int elemFaceOrdinal)
 {
-  DoubleType NALU_ALIGN(64) w_uBip[BcAlgTraits::nDim_];
-  DoubleType NALU_ALIGN(64) w_rho_uBip[BcAlgTraits::nDim_];
-  DoubleType NALU_ALIGN(64) w_GpdxBip[BcAlgTraits::nDim_];
-  DoubleType NALU_ALIGN(64) w_dpdxBip[BcAlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_uBip[BcAlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_rho_uBip[BcAlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_GpdxBip[BcAlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_dpdxBip[BcAlgTraits::nDim_];
  
   const int *face_node_ordinals = meSCS_->side_node_ordinals(elemFaceOrdinal);
  
@@ -116,7 +116,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
  
   // element
   SharedMemView<DoubleType*>& v_pressure = elemScratchViews.get_scratch_view_1D(*pressure_);
-
+ 
   // dndx for both rhs and lhs
   SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_ 
     ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc_scs

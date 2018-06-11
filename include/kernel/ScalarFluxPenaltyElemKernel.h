@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef ContinuityOpenElemKernel_h
-#define ContinuityOpenElemKernel_h
+#ifndef ScalarFluxPenaltyElemKernel_h
+#define ScalarFluxPenaltyElemKernel_h
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -26,20 +26,19 @@ class MasterElement;
 /** specificed open bc (face/elem) kernel for continuity equation (pressure DOF)
  */
 template<typename BcAlgTraits>
-class ContinuityOpenElemKernel: public Kernel
+class ScalarFluxPenaltyElemKernel: public Kernel
 {
 public:
-  ContinuityOpenElemKernel(
+  ScalarFluxPenaltyElemKernel(
     const stk::mesh::MetaData &metaData,
     const SolutionOptions &solnOpts,
+    ScalarFieldType *scalarQ,
+    ScalarFieldType *bcScalarQ,
+    ScalarFieldType *diffFluxCoeff,
     ElemDataRequests &faceDataPreReqs,
     ElemDataRequests &elemDataPreReqs);
 
-  virtual ~ContinuityOpenElemKernel();
-
-  /** Perform pre-timestep work for the computational kernel
-   */
-  virtual void setup(const TimeIntegrator&);
+  virtual ~ScalarFluxPenaltyElemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -52,25 +51,16 @@ public:
     int elemFaceOrdinal);
 
 private:
-  ContinuityOpenElemKernel() = delete;
+  ScalarFluxPenaltyElemKernel() = delete;
 
-  VectorFieldType *velocityRTM_{nullptr};
-  VectorFieldType *Gpdx_{nullptr};
+  ScalarFieldType *scalarQ_{nullptr};
+  ScalarFieldType *bcScalarQ_{nullptr};
+  ScalarFieldType *diffFluxCoeff_{nullptr};
   VectorFieldType *coordinates_{nullptr};
-  ScalarFieldType *pressure_{nullptr};
-  ScalarFieldType *pressureBc_{nullptr};
-  ScalarFieldType *density_{nullptr};
   GenericFieldType *exposedAreaVec_{nullptr};
 
-  double projTimeScale_{1.0};
-  const double mdotCorrection_{0.0};
-  const double penaltyFac_{2.0};
-  
+  const double penaltyFac_;
   const bool shiftedGradOp_;
-  const bool reducedSensitivities_;
-  const double pstabFac_;
-  const double interpTogether_;
-  const double om_interpTogether_;
   MasterElement *meSCS_{nullptr};
   
   /// Shape functions

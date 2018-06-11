@@ -324,6 +324,12 @@ WedSCS::WedSCS()
   lrscv_[14] = 1; lrscv_[15] = 4;
   lrscv_[16] = 2; lrscv_[17] = 5;
 
+  // elem-edge mapping from ip
+  scsIpEdgeOrd_.resize(numIntPoints_);
+  scsIpEdgeOrd_[0] = 0; scsIpEdgeOrd_[1] = 1; scsIpEdgeOrd_[2] = 2; 
+  scsIpEdgeOrd_[3] = 3; scsIpEdgeOrd_[4] = 4; scsIpEdgeOrd_[5] = 5; 
+  scsIpEdgeOrd_[6] = 6; scsIpEdgeOrd_[7] = 7; scsIpEdgeOrd_[8] = 8; 
+
   // define opposing node
   oppNode_.resize(20);
   // face 0; nodes 0,1,4,3
@@ -761,74 +767,26 @@ WedSCS::face_grad_op(
   }
 }
 
-void WedSCS::face_grad_op_tri(const int face_ordinal, const bool shifted, 
-                              SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop)
-{
-  using tri_traits = AlgTraitsTri3Wed6;
-  using quad_traits = AlgTraitsQuad4Wed6;
-
-  constexpr int derivSize = tri_traits::numFaceIp_ *  tri_traits::nodesPerElement_ * tri_traits::nDim_;
-
-  DoubleType psi[derivSize];
-  TriFaceGradType deriv(psi);
-
-  int offset;
-  if (shifted)  offset = sideOffset_[face_ordinal];
-  else          offset = (face_ordinal < 3) ? 0 : quad_traits::numFaceIp_ * face_ordinal;
-  wed_deriv(tri_traits::numFaceIp_, &intgExpFace_[tri_traits::nDim_ * offset], deriv);
-  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
-}
-
-void WedSCS::face_grad_op_quad(const int face_ordinal, const bool shifted, 
-                               SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop)
-{
-  using quad_traits = AlgTraitsQuad4Wed6;
-
-  constexpr int derivSize = quad_traits::numFaceIp_ *  quad_traits::nodesPerElement_ * quad_traits::nDim_;
-  DoubleType psi[derivSize];
-  QuadFaceGradType deriv(psi);
-
-  int offset;
-  if (shifted)  offset = sideOffset_[face_ordinal];
-  else          offset = (face_ordinal < 3) ? quad_traits::numFaceIp_ * face_ordinal : 0;
-  wed_deriv(quad_traits::numFaceIp_, &intgExpFace_[quad_traits::nDim_ * offset], deriv);
-  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
-}
-
-void WedSCS::face_grad_op(
-  const int face_ordinal,
-  const bool shifted,
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop)
-{
-  using tri_traits = AlgTraitsTri3Wed6;
-  using quad_traits = AlgTraitsQuad4Wed6;
-
-  constexpr int quad_derivSize = quad_traits::numFaceIp_ *  quad_traits::nodesPerElement_ * quad_traits::nDim_;
-  DoubleType quad_grad_temp[quad_derivSize];
-  QuadFaceGradType quad_gradop(quad_grad_temp,quad_traits::numFaceIp_,quad_traits::nodesPerElement_,quad_traits::nDim_);
-  face_grad_op_quad(face_ordinal, shifted, coords, quad_gradop);
-
-  constexpr int tri_derivSize = tri_traits::numFaceIp_ *  tri_traits::nodesPerElement_ * tri_traits::nDim_;
-  DoubleType tri_grad_temp[tri_derivSize];
-  TriFaceGradType tri_gradop(tri_grad_temp,tri_traits::numFaceIp_,tri_traits::nodesPerElement_,tri_traits::nDim_);
-  face_grad_op_tri(face_ordinal, shifted, coords, tri_gradop);
-
-  const int length = (face_ordinal < 3) ? quad_derivSize : tri_derivSize;
-  DoubleType triMask = (face_ordinal < 3) ? 0 : 1;
-  DoubleType* gradop_ptr = gradop.ptr_on_device();
-  for (int k = 0; k < length; ++k) {
-    gradop_ptr[k] = (1-triMask) * quad_grad_temp[k] + triMask * tri_grad_temp[k];
-  }
-}
-
+//--------------------------------------------------------------------------
+//-------- face_grad_op ----------------------------------------------------
+//--------------------------------------------------------------------------
 void WedSCS::face_grad_op(
   int face_ordinal,
   SharedMemView<DoubleType**>& coords,
   SharedMemView<DoubleType***>& gradop)
 {
-  constexpr bool shifted = false;
-  face_grad_op(face_ordinal, shifted, coords, gradop);
+  using tri_traits = AlgTraitsTri3Wed6;
+  using quad_traits = AlgTraitsQuad4Wed6;
+  constexpr int dim = 3;
+
+  constexpr int maxDerivSize = quad_traits::numFaceIp_ *  quad_traits::nodesPerElement_ * dim;
+  NALU_ALIGNED DoubleType psi[maxDerivSize];
+  const int numFaceIps = (face_ordinal < 3) ? quad_traits::numFaceIp_ : tri_traits::numFaceIp_;
+  SharedMemView<DoubleType***> deriv(psi, numFaceIps, AlgTraitsWed6::nodesPerElement_, dim);
+
+  const int offset = quad_traits::numFaceIp_ * face_ordinal;
+  wed_deriv(numFaceIps, &intgExpFace_[dim * offset], deriv);
+  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
 }
 //--------------------------------------------------------------------------
 //-------- shifted_face_grad_op --------------------------------------------
@@ -838,8 +796,18 @@ void WedSCS::shifted_face_grad_op(
   SharedMemView<DoubleType**>& coords,
   SharedMemView<DoubleType***>& gradop)
 {
-  constexpr bool shifted = true;
-  face_grad_op(face_ordinal, shifted, coords, gradop);
+  using tri_traits = AlgTraitsTri3Wed6;
+  using quad_traits = AlgTraitsQuad4Wed6;
+  constexpr int dim = 3;
+
+  constexpr int maxDerivSize = quad_traits::numFaceIp_ *  quad_traits::nodesPerElement_ * dim;
+  NALU_ALIGNED DoubleType psi[maxDerivSize];
+  const int numFaceIps = (face_ordinal < 3) ? quad_traits::numFaceIp_ : tri_traits::numFaceIp_;
+  SharedMemView<DoubleType***> deriv(psi, numFaceIps, AlgTraitsWed6::nodesPerElement_, dim);
+
+  const int offset = sideOffset_[face_ordinal];
+  wed_deriv(numFaceIps, &intgExpFaceShift_[dim * offset], deriv);
+  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
 }
 
 void
@@ -914,6 +882,15 @@ WedSCS::adjacentNodes()
 {
   // define L/R mappings
   return &lrscv_[0];
+}
+
+//--------------------------------------------------------------------------
+//-------- scsIpEdgeOrd ----------------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+WedSCS::scsIpEdgeOrd()
+{
+  return &scsIpEdgeOrd_[0];
 }
 
 //--------------------------------------------------------------------------

@@ -76,6 +76,11 @@ public:
     const int &npts,
     const double *par_coord, 
     double* shape_fcn);
+
+  void shifted_pyr_shape_fcn(
+    const int &npts,
+    const double *par_coord, 
+    double* shape_fcn);
 };
 
 // Pyramid 5 subcontrol surface
@@ -130,6 +135,11 @@ public:
     const double *intLoc,
     double *deriv);
 
+  void shifted_pyr_derivative(
+    const int npts,
+    const double *intLoc,
+    double *deriv);
+
   void gij( 
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gupper,
@@ -144,6 +154,8 @@ public:
 
   const int * adjacentNodes();
 
+  const int * scsIpEdgeOrd() override;
+
   void shape_fcn(
     double *shpfc);
 
@@ -151,6 +163,11 @@ public:
     double *shpfc);
   
   void pyr_shape_fcn(
+    const int &npts,
+    const double *par_coord, 
+    double* shape_fcn);
+
+  void shifted_pyr_shape_fcn(
     const int &npts,
     const double *par_coord, 
     double* shape_fcn);
@@ -222,13 +239,6 @@ public:
     const double *field,
     double *result);
 
-private:
-  using QuadFaceGradType = SharedMemView<DoubleType***>;
-  using TriFaceGradType = SharedMemView<DoubleType***>;
-
-  void face_grad_op(const int face_ordinal, const bool shifted, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop);
-  void face_grad_op_quad(const int face_ordinal, const bool shifted, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop);
-  void face_grad_op_tri(const int face_ordinal, const bool shifted, SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop);
 };
 
 } // namespace nalu

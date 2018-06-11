@@ -143,6 +143,8 @@ public:
     double *deriv);
 
   const int * adjacentNodes();
+  
+  const int * scsIpEdgeOrd() override;
 
   int opposingNodes(
     const int ordinal, const int node);
@@ -197,15 +199,6 @@ public:
   double parametric_distance( const std::vector<double> &x);
 
   const int* side_node_ordinals(int sideOrdinal) final;
-
-private:
-  using QuadFaceGradType = SharedMemView<DoubleType***>;
-  using TriFaceGradType = SharedMemView<DoubleType***>;
-
-  void face_grad_op(const int face_ordinal, const bool shifted, SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop);
-  void face_grad_op_tri(const int face_ordinal, const bool shifted, SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop);
-  void face_grad_op_quad(const int face_ordinal, const bool shifted, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop);
-
 };
 
 
